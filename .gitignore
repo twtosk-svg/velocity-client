@@ -1,39 +1,54 @@
-# gradle
-
+# Gradle & Build output
 .gradle/
 build/
 out/
 classes/
+velocity-refmap.json
 
-# eclipse
+# Local compiled class files
+net/
 
+# Logs & Temporary debug files
+*.log
+compile_log.txt
+build_output.txt
+gradle_out.txt
+out.txt
+
+# Downloaded Mappings
+extract_mappings/
+
+# Local maintenance/refactoring scripts
+cleanup.py
+cleanup2.py
+reorder.py
+reorder2.py
+refactor_ui.py
+
+# Eclipse
 *.launch
+.settings/
+.classpath
+.project
 
-# idea
-
+# IntelliJ IDEA
 .idea/
 *.iml
 *.ipr
 *.iws
 
-# vscode
-
-.settings/
+# VSCode
 .vscode/
 bin/
-.classpath
-.project
 
-# macos
-
+# OS specific files
 *.DS_Store
+Thumbs.db
 
-# fabric
-
+# Fabric run directories
 run/
 
-# java
-
+# Java JVM logs
 hs_err_*.log
 replay_*.log
 *.hprof
