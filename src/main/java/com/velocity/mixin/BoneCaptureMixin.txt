@@ -1,0 +1,70 @@
+package com.velocity.mixin;
+
+import com.velocity.core.BoneDataCache;
+import com.velocity.core.BoneDataCache.BoneSnapshot;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.entity.LivingEntityRenderer;
+import net.minecraft.client.render.entity.model.BipedEntityModel;
+import net.minecraft.client.render.entity.model.EntityModel;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.math.MathHelper;
+import org.joml.Vector3f;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(LivingEntityRenderer.class)
+public abstract class BoneCaptureMixin<T extends LivingEntity, M extends EntityModel<T>> {
+
+    @Shadow
+    protected M model;
+
+    @Inject(
+        method = "render",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/render/entity/model/EntityModel;setAngles(Lnet/minecraft/entity/Entity;FFFFF)V",
+            shift = At.Shift.AFTER
+        )
+    )
+    private void onAfterSetAngles(
+            T entity,
+            float yaw,
+            float tickDelta,
+            MatrixStack matrices,
+            VertexConsumerProvider vertexConsumers,
+            int light,
+            CallbackInfo ci) {
+
+        if (!(this.model instanceof BipedEntityModel<?> biped)) return;
+
+        double wx = MathHelper.lerp(tickDelta, entity.prevX, entity.getX());
+        double wy = MathHelper.lerp(tickDelta, entity.prevY, entity.getY());
+        double wz = MathHelper.lerp(tickDelta, entity.prevZ, entity.getZ());
+        float bodyYaw = MathHelper.lerpAngleDegrees(tickDelta, entity.prevBodyYaw, entity.bodyYaw);
+
+        BoneSnapshot snap = new BoneSnapshot(
+            copyPivot(biped.head),
+            copyPivot(biped.body),
+            copyPivot(biped.rightArm),
+            copyPivot(biped.leftArm),
+            copyPivot(biped.rightLeg),
+            copyPivot(biped.leftLeg),
+            wx, wy, wz,
+            bodyYaw,
+            entity.getHeight(),
+            entity.isInSneakingPose(),
+            entity.isSwimming(),
+            entity.isFallFlying()
+        );
+
+        BoneDataCache.cache.put(entity.getId(), snap);
+    }
+
+    private static Vector3f copyPivot(net.minecraft.client.model.ModelPart part) {
+        return new Vector3f(part.pivotX, part.pivotY, part.pivotZ);
+    }
+}

@@ -1,0 +1,38 @@
+plugins {
+    id 'fabric-loom' version '1.14.10'
+    id 'maven-publish'
+    id 'java'
+}
+
+version = '1.0.0'
+group = 'com.velocity'
+
+repositories {
+    mavenCentral()
+    maven { url "https://maven.fabricmc.net/" }
+}
+
+loom {
+    accessWidenerPath = file("src/main/resources/esp.accesswidener")
+    
+    mixin {
+        useLegacyMixinAp = true
+        defaultRefmapName = "velocity-refmap.json"
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:1.21.11"
+    mappings "net.fabricmc:yarn:1.21.11+build.4:v2"
+    modImplementation "net.fabricmc:fabric-loader:0.18.4"
+
+    include(implementation('io.github.spair:imgui-java-binding:1.86.12'))
+    include(implementation('io.github.spair:imgui-java-lwjgl3:1.86.12'))
+    include(implementation('io.github.spair:imgui-java-natives-windows:1.86.12'))
+    implementation 'net.java.dev.jna:jna:5.14.0'
+    implementation 'net.java.dev.jna:jna-platform:5.14.0'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+}

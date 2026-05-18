@@ -1,0 +1,30 @@
+{
+    "schemaVersion": 1,
+    "id": "velocity",
+    "version": "1.4",
+    "name": "Velocity",
+    "description": "Velocity client mod.",
+    "authors": [
+        "Antigravity"
+    ],
+    "contact": {},
+    "license": "CC0-1.0",
+    "icon": "assets/velocity/icon.png",
+    "environment": "client",
+    "entrypoints": {
+        "client": [
+            "com.velocity.core.EspMod"
+        ]
+    },
+    "mixins": [
+        "esp.mixins.json"
+    ],
+    "accessWidener": "esp.accesswidener",
+    "depends": {
+        "fabricloader": "*",
+        "minecraft": "*",
+        "java": ">=21",
+        "fabric-api": "*"
+    },
+    "suggests": {}
+}
