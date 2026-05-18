@@ -14,8 +14,13 @@ import com.velocity.config.AimAssistSettings;
 import com.velocity.config.UtilitySettings;
 import com.velocity.config.OreEspSettings;
 import com.velocity.config.EspSettings;
+import com.velocity.gui.GlBackgroundBlur;
+import com.velocity.gui.MenuAnimator;
 import com.velocity.gui.MenuUI;
 import com.velocity.gui.OverlayManager;
+import com.velocity.gui.framework.UiColors;
+import com.velocity.gui.framework.UiFonts;
+import com.velocity.gui.framework.UiScale;
 import com.velocity.mixin.GameRendererAccessor;
 import com.velocity.mixin.HandledScreenAccessor;
 
@@ -74,13 +79,13 @@ public class EspRenderer {
 
         OverlayManager.onFrame();
 
-        long mcHwnd = GLFWNativeWin32.glfwGetWin32Window(client.getWindow().getHandle());
-        HWND fgHwnd = Win32Setup.INSTANCE.GetForegroundWindow();
-        long ovHwnd = GLFWNativeWin32.glfwGetWin32Window(overlayWindow);
-        long fgVal = fgHwnd != null ? Pointer.nativeValue(fgHwnd.getPointer()) : 0;
-        boolean validForeground = (fgVal == mcHwnd || fgVal == ovHwnd);
+        long mcWindow = client.getWindow().getHandle();
+        boolean mcFocused = GLFW.glfwGetWindowAttrib(mcWindow, GLFW.GLFW_FOCUSED) == GLFW.GLFW_TRUE;
+        boolean ovFocused = GLFW.glfwGetWindowAttrib(overlayWindow, GLFW.GLFW_FOCUSED) == GLFW.GLFW_TRUE;
+        boolean mcIconified = GLFW.glfwGetWindowAttrib(mcWindow, GLFW.GLFW_ICONIFIED) == GLFW.GLFW_TRUE;
 
-        if (!validForeground) {
+        // GLFW focus is reliable after alt-tab; GetForegroundWindow lags and breaks the GUI
+        if (mcIconified || (!mcFocused && !ovFocused && !OverlayManager.isMenuOpen())) {
             long prev = GLFW.glfwGetCurrentContext();
             GLFW.glfwMakeContextCurrent(overlayWindow);
             GL11.glClearColor(0, 0, 0, 0);
@@ -96,13 +101,20 @@ public class EspRenderer {
 
         if (insertDown && !insertWasDown) {
             boolean wasOpen = OverlayManager.isMenuOpen();
-            OverlayManager.toggleMenu();
+            if (wasOpen) {
+                MenuAnimator.onToggleRequest(false);
+                OverlayManager.requestCloseMenu();
+            } else {
+                MenuAnimator.onToggleRequest(true);
+                OverlayManager.openMenu();
+            }
             if (wasOpen)
-                ConfigManager.save(); // save when menu closes
+                ConfigManager.save();
         }
         if (escDown && !escWasDown && OverlayManager.isMenuOpen()) {
-            OverlayManager.toggleMenu();
-            ConfigManager.save(); // save when menu closes
+            MenuAnimator.onToggleRequest(false);
+            OverlayManager.requestCloseMenu();
+            ConfigManager.save();
         }
 
         if (rightControlDown && !rightControlWasDown) {
@@ -126,32 +138,9 @@ public class EspRenderer {
             if (!configDir.exists()) configDir.mkdirs();
             io.setIniFilename(new java.io.File(configDir, "velocity_ui.ini").getAbsolutePath());
             
-            // Set Theme colors permanently
-            imgui.ImGuiStyle style = ImGui.getStyle();
-            style.setColor(imgui.flag.ImGuiCol.TitleBgActive,   0.15f, 0.45f, 0.90f, 1.00f);
-            style.setColor(imgui.flag.ImGuiCol.Header,          0.10f, 0.35f, 0.75f, 0.55f);
-            style.setColor(imgui.flag.ImGuiCol.HeaderHovered,   0.15f, 0.45f, 0.90f, 0.75f);
-            style.setColor(imgui.flag.ImGuiCol.HeaderActive,    0.20f, 0.55f, 1.00f, 1.00f);
-            style.setColor(imgui.flag.ImGuiCol.CheckMark,       0.20f, 0.75f, 1.00f, 1.00f);
-            style.setColor(imgui.flag.ImGuiCol.SliderGrab,      0.20f, 0.65f, 1.00f, 1.00f);
-            style.setColor(imgui.flag.ImGuiCol.SliderGrabActive,0.25f, 0.80f, 1.00f, 1.00f);
-            style.setColor(imgui.flag.ImGuiCol.Button,          0.10f, 0.35f, 0.75f, 0.70f);
-            style.setColor(imgui.flag.ImGuiCol.ButtonHovered,   0.15f, 0.45f, 0.90f, 0.90f);
-            style.setColor(imgui.flag.ImGuiCol.ButtonActive,    0.20f, 0.55f, 1.00f, 1.00f);
-            style.setColor(imgui.flag.ImGuiCol.FrameBg,         0.08f, 0.08f, 0.12f, 0.80f);
-            style.setColor(imgui.flag.ImGuiCol.FrameBgHovered,  0.12f, 0.12f, 0.20f, 0.90f);
-
-            try {
-                java.io.File fontFile = new java.io.File("C:\\Windows\\Fonts\\segoeui.ttf");
-                if (fontFile.exists()) {
-                    io.getFonts().addFontFromFileTTF(fontFile.getAbsolutePath(), 18.0f);
-                } else {
-                    io.getFonts().addFontDefault();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                io.getFonts().addFontDefault();
-            }
+            UiColors.applyImGuiStyle();
+            UiFonts.load(io);
+            io.getFonts().build();
             GL.createCapabilities();
 
             imGuiGlfw = new ImGuiImplGlfw();
@@ -253,8 +242,15 @@ public class EspRenderer {
         LogoutTracker.tick(client);
 
         // 2 ── Menu ────────────────────────────────────────────────────────────
-        if (OverlayManager.isMenuOpen()) {
-            MenuUI.draw(1.0f, 1.0f);
+        MenuAnimator.tick(OverlayManager.isMenuOpen(), ImGui.getIO().getDeltaTime());
+        if (MenuAnimator.shouldDrawMenu()) {
+            if (GlBackgroundBlur.isAvailable()) {
+                GlBackgroundBlur.blur();
+            }
+            MenuUI.draw(MenuAnimator.getAlpha(), MenuAnimator.getScale());
+        }
+        if (MenuAnimator.isFullyClosed() && OverlayManager.finishCloseIfPending()) {
+            // overlay input restored after fade
         }
         
         // 3 ── Admin Radar ─────────────────────────────────────────────────────
@@ -265,6 +261,13 @@ public class EspRenderer {
 
         ImGui.render();
         imGuiGl3.renderDrawData(ImGui.getDrawData());
+
+        // Capture only when menu is hidden — avoids blurring the menu into itself (nested UI artifact)
+        if (GlBackgroundBlur.ENABLED && !MenuAnimator.shouldDrawMenu()) {
+            GLFW.glfwGetFramebufferSize(overlayWindow, GWIN_W, GWIN_H);
+            GlBackgroundBlur.resize(GWIN_W[0], GWIN_H[0]);
+            GlBackgroundBlur.captureFrame();
+        }
 
         GLFW.glfwSwapBuffers(overlayWindow);
         GLFW.glfwMakeContextCurrent(previousContext);

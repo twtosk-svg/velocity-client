@@ -1,6 +1,8 @@
 package com.velocity.gui;
 
 import com.velocity.config.EspSettings;
+import com.velocity.gui.framework.UiColors;
+import com.velocity.gui.framework.UiScale;
 import imgui.ImGui;
 import imgui.flag.ImGuiCond;
 import imgui.flag.ImGuiWindowFlags;
@@ -47,10 +49,13 @@ public class AdminRadar {
         }
 
         ImGui.setNextWindowPos(10, 10, ImGuiCond.FirstUseEver);
-        ImGui.setNextWindowBgAlpha(0.7f);
-        
-        // Push a slight style change for a modern feel
-        ImGui.pushStyleVar(imgui.flag.ImGuiStyleVar.WindowRounding, 8.0f);
+        ImGui.setNextWindowBgAlpha(0.88f);
+
+        ImGui.pushStyleColor(imgui.flag.ImGuiCol.WindowBg, UiColors.WINDOW_CHILD[0], UiColors.WINDOW_CHILD[1],
+                UiColors.WINDOW_CHILD[2], 0.95f);
+        ImGui.pushStyleColor(imgui.flag.ImGuiCol.Border, UiColors.WINDOW_LINE[0], UiColors.WINDOW_LINE[1],
+                UiColors.WINDOW_LINE[2], 0.6f);
+        ImGui.pushStyleVar(imgui.flag.ImGuiStyleVar.WindowRounding, UiScale.s(10f));
         
         if (ImGui.begin("Admin Radar", flags)) {
             if (admins.isEmpty()) {
@@ -110,5 +115,6 @@ public class AdminRadar {
         }
         ImGui.end();
         ImGui.popStyleVar();
+        ImGui.popStyleColor(2);
     }
 }

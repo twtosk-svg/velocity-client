@@ -27,6 +27,7 @@ public class ConfigManager {
 
     private static final Class<?>[] SETTING_CLASSES = {
         EspSettings.class,
+        UiSettings.class,
         AimAssistSettings.class,
         UtilitySettings.class,
         OreEspSettings.class,

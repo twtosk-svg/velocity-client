@@ -13,8 +13,15 @@ import com.velocity.config.EspSettings;
 import com.velocity.core.InputManager;
 import com.velocity.core.LightDebugManager;
 
+import com.velocity.config.UiSettings;
+import com.velocity.gui.framework.MenuChrome;
+import com.velocity.gui.framework.UiColors;
+import com.velocity.gui.framework.UiDraw;
+import com.velocity.gui.framework.UiWidgets;
+
 import imgui.ImGui;
 import imgui.flag.ImGuiCond;
+import imgui.flag.ImGuiTabBarFlags;
 import imgui.type.ImBoolean;
 import imgui.type.ImInt;
 
@@ -147,116 +154,120 @@ public class MenuUI {
             }
         }
 
-        ImGui.setNextWindowBgAlpha(0.92f);
-        ImGui.setNextWindowSize(650, 680, ImGuiCond.FirstUseEver);
+        MenuChrome.beginMenuWindow(menuAlpha, sliderWidthMult);
+        int blurReady = com.velocity.gui.GlBackgroundBlur.isAvailable()
+                && com.velocity.gui.GlBackgroundBlur.blurredTextureId() != 0 ? 1 : 0;
+        MenuChrome.drawWindowBackground(menuAlpha, blurReady);
 
-        ImGui.begin("  ⚡ Velocity 1.4", imgui.flag.ImGuiWindowFlags.AlwaysVerticalScrollbar);
-
-        if (ImGui.beginTabBar("Modules")) {
-            if (ImGui.beginTabItem("Combat")) {
-ImGui.textDisabled("Aim Assist");
-                ImGui.spacing();
+        if (ImGui.beginTabBar("Modules", ImGuiTabBarFlags.FittingPolicyScroll)) {
+            MenuChrome.beforeTabBar();
+            if (beginTab("Combat")) {
+UiDraw.textSection("Aim Assist");
                 ImGui.spacing();
                 aimEnabledBool.set(AimAssistSettings.enabled);
-                if (ImGui.checkbox("Enable Aim Assist", aimEnabledBool)) {
+                if (UiWidgets.checkbox("Enable Aim Assist", aimEnabledBool)) {
                     AimAssistSettings.enabled = aimEnabledBool.get();
                 }
 
                 if (AimAssistSettings.enabled) {
                     ImGui.separator();
 
-                    aimZombiesBool.set(AimAssistSettings.targetZombies);
-                    if (ImGui.checkbox("Target Zombies##aim", aimZombiesBool)) {
-                        AimAssistSettings.targetZombies = aimZombiesBool.get();
-                    }
-
-                    ImGui.sameLine();
-                    aimVillagersBool.set(AimAssistSettings.targetVillagers);
-                    if (ImGui.checkbox("Target Villagers##aim", aimVillagersBool)) {
-                        AimAssistSettings.targetVillagers = aimVillagersBool.get();
-                    }
-
-                    ImGui.sameLine();
-                    aimPlayersBool.set(AimAssistSettings.targetPlayers);
-                    if (ImGui.checkbox("Target Players##aim", aimPlayersBool)) {
-                        AimAssistSettings.targetPlayers = aimPlayersBool.get();
-                    }
-
-                    if (AimAssistSettings.targetPlayers) {
-                        ImGui.sameLine();
-                        aimTeammatesBool.set(AimAssistSettings.ignoreTeammates);
-                        if (ImGui.checkbox("Ignore Teammates##aim", aimTeammatesBool)) {
-                            AimAssistSettings.ignoreTeammates = aimTeammatesBool.get();
+                    if (ImGui.beginTable("##aim_targets", 2, imgui.flag.ImGuiTableFlags.SizingStretchSame)) {
+                        aimZombiesBool.set(AimAssistSettings.targetZombies);
+                        ImGui.tableNextColumn();
+                        if (UiWidgets.checkbox("Target Zombies##aim", aimZombiesBool)) {
+                            AimAssistSettings.targetZombies = aimZombiesBool.get();
                         }
-                        if (ImGui.isItemHovered()) {
-                            ImGui.setTooltip("Automatically skips players on the same scoreboard team for Aim Assist and TriggerBot.");
+                        aimVillagersBool.set(AimAssistSettings.targetVillagers);
+                        ImGui.tableNextColumn();
+                        if (UiWidgets.checkbox("Target Villagers##aim", aimVillagersBool)) {
+                            AimAssistSettings.targetVillagers = aimVillagersBool.get();
                         }
+                        aimPlayersBool.set(AimAssistSettings.targetPlayers);
+                        ImGui.tableNextColumn();
+                        if (UiWidgets.checkbox("Target Players##aim", aimPlayersBool)) {
+                            AimAssistSettings.targetPlayers = aimPlayersBool.get();
+                        }
+                        if (AimAssistSettings.targetPlayers) {
+                            aimTeammatesBool.set(AimAssistSettings.ignoreTeammates);
+                            ImGui.tableNextColumn();
+                            if (UiWidgets.checkbox("Ignore Teammates##aim", aimTeammatesBool)) {
+                                AimAssistSettings.ignoreTeammates = aimTeammatesBool.get();
+                            }
+                            if (ImGui.isItemHovered()) {
+                                ImGui.setTooltip("Automatically skips players on the same scoreboard team for Aim Assist and TriggerBot.");
+                            }
+                        }
+                        ImGui.endTable();
                     }
 
-                    aimBatsBool.set(AimAssistSettings.targetBats);
-                    if (ImGui.checkbox("Target Bats##aim", aimBatsBool)) {
-                        AimAssistSettings.targetBats = aimBatsBool.get();
-                    }
-
-                    ImGui.sameLine();
-                    aimRabbitsBool.set(AimAssistSettings.targetRabbits);
-                    if (ImGui.checkbox("Target Rabbits##aim", aimRabbitsBool)) {
-                        AimAssistSettings.targetRabbits = aimRabbitsBool.get();
+                    if (ImGui.beginTable("##aim_targets2", 2, imgui.flag.ImGuiTableFlags.SizingStretchSame)) {
+                        aimBatsBool.set(AimAssistSettings.targetBats);
+                        ImGui.tableNextColumn();
+                        if (UiWidgets.checkbox("Target Bats##aim", aimBatsBool)) {
+                            AimAssistSettings.targetBats = aimBatsBool.get();
+                        }
+                        aimRabbitsBool.set(AimAssistSettings.targetRabbits);
+                        ImGui.tableNextColumn();
+                        if (UiWidgets.checkbox("Target Rabbits##aim", aimRabbitsBool)) {
+                            AimAssistSettings.targetRabbits = aimRabbitsBool.get();
+                        }
+                        ImGui.endTable();
                     }
 
                     aimMaxDistArr[0] = AimAssistSettings.maxDistance;
                     ImGui.pushItemWidth(250f);
-                    if (ImGui.sliderFloat("Max Target Distance##aim", aimMaxDistArr, 1.0f, 15.0f, "%.1f blocks")) {
+                    if (UiWidgets.sliderFloat("Max Target Distance##aim", aimMaxDistArr, 1.0f, 15.0f, "%.1f blocks")) {
                         AimAssistSettings.maxDistance = aimMaxDistArr[0];
                     }
                     ImGui.popItemWidth();
 
                     aimDurationArr[0] = AimAssistSettings.assistDurationMs;
                     ImGui.pushItemWidth(250f);
-                    ImGui.sliderFloat("Duration (ms)##aim", aimDurationArr, 1f, 2000f, "%.0f");
+                    UiWidgets.sliderFloat("Duration (ms)##aim", aimDurationArr, 1f, 2000f, "%.0f");
                     ImGui.popItemWidth();
                     AimAssistSettings.assistDurationMs = (int) aimDurationArr[0];
 
                     aimFovArr[0] = AimAssistSettings.fovDegrees;
                     ImGui.pushItemWidth(250f);
-                    ImGui.sliderFloat("FOV (deg)##aim", aimFovArr, 10f, 360f, "%.0f");
+                    UiWidgets.sliderFloat("FOV (deg)##aim", aimFovArr, 10f, 360f, "%.0f");
                     ImGui.popItemWidth();
                     AimAssistSettings.fovDegrees = aimFovArr[0];
 
                     aimSpeedYawArr[0] = AimAssistSettings.speedYaw;
                     ImGui.pushItemWidth(250f);
-                    ImGui.sliderFloat("Speed Yaw##aim", aimSpeedYawArr, 1f, 100f, "%.1f");
+                    UiWidgets.sliderFloat("Speed Yaw##aim", aimSpeedYawArr, 1f, 100f, "%.1f");
                     ImGui.popItemWidth();
                     AimAssistSettings.speedYaw = aimSpeedYawArr[0];
 
                     aimComplimentYawArr[0] = AimAssistSettings.complimentYaw;
                     ImGui.pushItemWidth(250f);
-                    ImGui.sliderFloat("Compliment Yaw##aim", aimComplimentYawArr, 0f, 100f, "%.1f");
+                    UiWidgets.sliderFloat("Compliment Yaw##aim", aimComplimentYawArr, 0f, 100f, "%.1f");
                     ImGui.popItemWidth();
                     AimAssistSettings.complimentYaw = aimComplimentYawArr[0];
 
                     aimSpeedPitchArr[0] = AimAssistSettings.speedPitch;
                     ImGui.pushItemWidth(250f);
-                    ImGui.sliderFloat("Speed Pitch##aim", aimSpeedPitchArr, 1f, 100f, "%.1f");
+                    UiWidgets.sliderFloat("Speed Pitch##aim", aimSpeedPitchArr, 1f, 100f, "%.1f");
                     ImGui.popItemWidth();
                     AimAssistSettings.speedPitch = aimSpeedPitchArr[0];
 
                     aimComplimentPitchArr[0] = AimAssistSettings.complimentPitch;
                     ImGui.pushItemWidth(250f);
-                    ImGui.sliderFloat("Compliment Pitch##aim", aimComplimentPitchArr, 0f, 100f, "%.1f");
+                    UiWidgets.sliderFloat("Compliment Pitch##aim", aimComplimentPitchArr, 0f, 100f, "%.1f");
                     ImGui.popItemWidth();
                     AimAssistSettings.complimentPitch = aimComplimentPitchArr[0];
 
                     aimDeadzoneArr[0] = AimAssistSettings.deadzonePixels;
                     ImGui.pushItemWidth(250f);
-                    ImGui.sliderFloat("Deadzone (px)##aim", aimDeadzoneArr, 0f, 20f, "%.1f");
+                    UiWidgets.sliderFloat("Deadzone (px)##aim", aimDeadzoneArr, 0f, 20f, "%.1f");
                     ImGui.popItemWidth();
                     AimAssistSettings.deadzonePixels = aimDeadzoneArr[0];
 
                     ImGui.spacing();
 
                     aimFreeMoveBool.set(AimAssistSettings.freeMovement);
-                    if (ImGui.checkbox("Free Movement##aim", aimFreeMoveBool)) {
+                    if (UiWidgets.checkbox("Free Movement##aim", aimFreeMoveBool)) {
                         AimAssistSettings.freeMovement = aimFreeMoveBool.get();
                     }
                     if (ImGui.isItemHovered()) {
@@ -264,7 +275,7 @@ ImGui.textDisabled("Aim Assist");
                     }
 
                     aimDeadzoneDirBool.set(AimAssistSettings.deadzoneDirectionCheck);
-                    if (ImGui.checkbox("Deadzone Direction Check##aim", aimDeadzoneDirBool)) {
+                    if (UiWidgets.checkbox("Deadzone Direction Check##aim", aimDeadzoneDirBool)) {
                         AimAssistSettings.deadzoneDirectionCheck = aimDeadzoneDirBool.get();
                     }
                     if (ImGui.isItemHovered()) {
@@ -272,7 +283,7 @@ ImGui.textDisabled("Aim Assist");
                     }
 
                     aimVisCheckBool.set(AimAssistSettings.visibilityCheck);
-                    if (ImGui.checkbox("Visibility Check##aim", aimVisCheckBool)) {
+                    if (UiWidgets.checkbox("Visibility Check##aim", aimVisCheckBool)) {
                         AimAssistSettings.visibilityCheck = aimVisCheckBool.get();
                     }
                     if (ImGui.isItemHovered()) {
@@ -280,7 +291,7 @@ ImGui.textDisabled("Aim Assist");
                     }
 
                     mouse4AimBool.set(AimAssistSettings.mouse4Aim);
-                    if (ImGui.checkbox("Require Mouse4##aim", mouse4AimBool)) {
+                    if (UiWidgets.checkbox("Require Mouse4##aim", mouse4AimBool)) {
                         AimAssistSettings.mouse4Aim = mouse4AimBool.get();
                     }
                     if (ImGui.isItemHovered()) {
@@ -288,7 +299,7 @@ ImGui.textDisabled("Aim Assist");
                     }
 
                     aimIgnoreBowsBool.set(AimAssistSettings.ignoreBows);
-                    if (ImGui.checkbox("Ignore Bows/Crossbows##aim", aimIgnoreBowsBool)) {
+                    if (UiWidgets.checkbox("Ignore Bows/Crossbows##aim", aimIgnoreBowsBool)) {
                         AimAssistSettings.ignoreBows = aimIgnoreBowsBool.get();
                     }
                     if (ImGui.isItemHovered()) {
@@ -316,7 +327,7 @@ ImGui.textDisabled("Aim Assist");
                     ImGui.spacing();
 
                     aimFovCircleBool.set(AimAssistSettings.fovCircleEnabled);
-                    if (ImGui.checkbox("Show FOV Circle##aim", aimFovCircleBool)) {
+                    if (UiWidgets.checkbox("Show FOV Circle##aim", aimFovCircleBool)) {
                         AimAssistSettings.fovCircleEnabled = aimFovCircleBool.get();
                     }
                     if (AimAssistSettings.fovCircleEnabled) {
@@ -330,12 +341,12 @@ ImGui.textDisabled("Aim Assist");
                 ImGui.separator();
                 ImGui.endTabItem();
             }
-            if (ImGui.beginTabItem("TriggerBot")) {
+            if (beginTab("TriggerBot")) {
 ImGui.textDisabled("TriggerBot");
                 ImGui.spacing();
                 ImGui.spacing();
                 triggerBotBool.set(AimAssistSettings.triggerBotEnabled);
-                if (ImGui.checkbox("Enable TriggerBot", triggerBotBool)) {
+                if (UiWidgets.checkbox("Enable TriggerBot", triggerBotBool)) {
                     AimAssistSettings.triggerBotEnabled = triggerBotBool.get();
                 }
 
@@ -371,18 +382,18 @@ ImGui.textDisabled("TriggerBot");
 
                     triggerMinDelayArr[0] = AimAssistSettings.triggerBotMinDelayMs;
                     ImGui.pushItemWidth(250f);
-                    ImGui.sliderFloat("Min Delay (ms)", triggerMinDelayArr, 0f, 500f, "%.0f");
+                    UiWidgets.sliderFloat("Min Delay (ms)", triggerMinDelayArr, 0f, 500f, "%.0f");
                     ImGui.popItemWidth();
                     AimAssistSettings.triggerBotMinDelayMs = (int) triggerMinDelayArr[0];
 
                     triggerMaxDelayArr[0] = AimAssistSettings.triggerBotMaxDelayMs;
                     ImGui.pushItemWidth(250f);
-                    ImGui.sliderFloat("Max Delay (ms)", triggerMaxDelayArr, 0f, 500f, "%.0f");
+                    UiWidgets.sliderFloat("Max Delay (ms)", triggerMaxDelayArr, 0f, 500f, "%.0f");
                     ImGui.popItemWidth();
                     AimAssistSettings.triggerBotMaxDelayMs = (int) triggerMaxDelayArr[0];
                     
                     triggerSmartCritBool.set(AimAssistSettings.triggerBotSmartCrit);
-                    if (ImGui.checkbox("Smart Crit##trigger", triggerSmartCritBool)) {
+                    if (UiWidgets.checkbox("Smart Crit##trigger", triggerSmartCritBool)) {
                         AimAssistSettings.triggerBotSmartCrit = triggerSmartCritBool.get();
                     }
                     if (ImGui.isItemHovered()) {
@@ -390,7 +401,7 @@ ImGui.textDisabled("TriggerBot");
                     }
                     
                     triggerLowHpBool.set(AimAssistSettings.triggerBotLowHpOverride);
-                    if (ImGui.checkbox("Low HP Auto-kill##trigger", triggerLowHpBool)) {
+                    if (UiWidgets.checkbox("Low HP Auto-kill##trigger", triggerLowHpBool)) {
                         AimAssistSettings.triggerBotLowHpOverride = triggerLowHpBool.get();
                     }
                     if (ImGui.isItemHovered()) {
@@ -398,7 +409,7 @@ ImGui.textDisabled("TriggerBot");
                     }
 
                     triggerWeaponOnlyBool.set(AimAssistSettings.triggerBotWeaponOnly);
-                    if (ImGui.checkbox("Weapon Only##trigger", triggerWeaponOnlyBool)) {
+                    if (UiWidgets.checkbox("Weapon Only##trigger", triggerWeaponOnlyBool)) {
                         AimAssistSettings.triggerBotWeaponOnly = triggerWeaponOnlyBool.get();
                     }
                     if (ImGui.isItemHovered()) {
@@ -408,7 +419,7 @@ ImGui.textDisabled("TriggerBot");
                     ImGui.separator();
                     // ShieldBreaker
                     shieldBreakerBool.set(AimAssistSettings.shieldBreakerEnabled);
-                    if (ImGui.checkbox("Auto Shield Breaker (Axe)##trigger", shieldBreakerBool)) {
+                    if (UiWidgets.checkbox("Auto Shield Breaker (Axe)##trigger", shieldBreakerBool)) {
                         AimAssistSettings.shieldBreakerEnabled = shieldBreakerBool.get();
                     }
                     if (ImGui.isItemHovered()) {
@@ -417,7 +428,7 @@ ImGui.textDisabled("TriggerBot");
                     if (AimAssistSettings.shieldBreakerEnabled) {
                         shieldCooldownArr[0] = AimAssistSettings.shieldBreakerMinCooldown;
                         ImGui.pushItemWidth(250f);
-                        ImGui.sliderFloat("Min Switch Cooldown (%)", shieldCooldownArr, 0f, 100f, "%.0f%%");
+                        UiWidgets.sliderFloat("Min Switch Cooldown (%)", shieldCooldownArr, 0f, 100f, "%.0f%%");
                         ImGui.popItemWidth();
                         AimAssistSettings.shieldBreakerMinCooldown = shieldCooldownArr[0];
                     }
@@ -426,7 +437,7 @@ ImGui.textDisabled("TriggerBot");
 ImGui.textDisabled("Shield ESP");
                     ImGui.spacing();
                     shieldEspEnabledImBool.set(EspSettings.shieldEspEnabled);
-                    if (ImGui.checkbox("Enable Shield Indicator", shieldEspEnabledImBool)) {
+                    if (UiWidgets.checkbox("Enable Shield Indicator", shieldEspEnabledImBool)) {
                         EspSettings.shieldEspEnabled = shieldEspEnabledImBool.get();
                     }
                     if (EspSettings.shieldEspEnabled) {
@@ -438,7 +449,7 @@ ImGui.textDisabled("Shield ESP");
                         
                         float[] shieldThicknessArr = { EspSettings.shieldEspThickness };
                         ImGui.pushItemWidth(150f);
-                        if (ImGui.sliderFloat("Shield Thickness##esp", shieldThicknessArr, 1.0f, 10.0f, "%.1f px")) {
+                        if (UiWidgets.sliderFloat("Shield Thickness##esp", shieldThicknessArr, 1.0f, 10.0f, "%.1f px")) {
                             EspSettings.shieldEspThickness = shieldThicknessArr[0];
                         }
                         ImGui.popItemWidth();
@@ -457,17 +468,17 @@ ImGui.textDisabled("Shield ESP");
 
                 ImGui.endTabItem();
             }
-            if (ImGui.beginTabItem("ESP")) {
+            if (beginTab("ESP")) {
 ImGui.textDisabled("ESP");
                 ImGui.spacing();
                 ImGui.spacing();
                 espEnabledImBool.set(EspSettings.espEnabled);
-                if (ImGui.checkbox("Master ESP Toggle", espEnabledImBool)) {
+                if (UiWidgets.checkbox("Master ESP Toggle", espEnabledImBool)) {
                     EspSettings.espEnabled = espEnabledImBool.get();
                 }
 
                 streamproofEnabledImBool.set(EspSettings.streamproofEnabled);
-                if (ImGui.checkbox("OBS Streamproof Mode", streamproofEnabledImBool)) {
+                if (UiWidgets.checkbox("OBS Streamproof Mode", streamproofEnabledImBool)) {
                     EspSettings.streamproofEnabled = streamproofEnabledImBool.get();
                 }
                 if (ImGui.isItemHovered()) {
@@ -477,7 +488,7 @@ ImGui.textDisabled("ESP");
                 if (EspSettings.espEnabled) {
                     ImGui.separator();
                     espBoxesEnabledImBool.set(EspSettings.espBoxesEnabled);
-                    if (ImGui.checkbox("Enable Boxes", espBoxesEnabledImBool)) {
+                    if (UiWidgets.checkbox("Enable Boxes", espBoxesEnabledImBool)) {
                         EspSettings.espBoxesEnabled = espBoxesEnabledImBool.get();
                     }
                     if (EspSettings.espBoxesEnabled) {
@@ -489,18 +500,18 @@ ImGui.textDisabled("ESP");
                     }
 
                     nametagsEnabledImBool.set(EspSettings.nametagsEnabled);
-                    if (ImGui.checkbox("Enable Nametags", nametagsEnabledImBool)) {
+                    if (UiWidgets.checkbox("Enable Nametags", nametagsEnabledImBool)) {
                         EspSettings.nametagsEnabled = nametagsEnabledImBool.get();
                     }
                     ImGui.sameLine();
 advancedNametagsEnabledImBool.set(EspSettings.advancedNametagsEnabled);
-                    if (ImGui.checkbox("Advanced Nametags (Team Tags)", advancedNametagsEnabledImBool)) {
+                    if (UiWidgets.checkbox("Advanced Nametags (Team Tags)", advancedNametagsEnabledImBool)) {
                         EspSettings.advancedNametagsEnabled = advancedNametagsEnabledImBool.get();
                     }
 
 
                     healthbarsEnabledImBool.set(EspSettings.healthbarsEnabled);
-                    if (ImGui.checkbox("Enable Healthbars", healthbarsEnabledImBool)) {
+                    if (UiWidgets.checkbox("Enable Healthbars", healthbarsEnabledImBool)) {
                         EspSettings.healthbarsEnabled = healthbarsEnabledImBool.get();
                     }
 
@@ -516,13 +527,13 @@ advancedNametagsEnabledImBool.set(EspSettings.advancedNametagsEnabled);
                         ImGui.sameLine();
                         ImGui.pushItemWidth(80f);
                         healthbarThicknessArr[0] = EspSettings.healthbarThickness;
-                        ImGui.sliderFloat("Thickness##health", healthbarThicknessArr, 1f, 10f, "%.1f");
+                        UiWidgets.sliderFloat("Thickness##health", healthbarThicknessArr, 1f, 10f, "%.1f");
                         EspSettings.healthbarThickness = healthbarThicknessArr[0];
                         ImGui.popItemWidth();
 
                         ImGui.sameLine();
                         healthV2EnabledImBool.set(EspSettings.healthV2Enabled);
-                        if (ImGui.checkbox("Health v2 (Pink/Glow)", healthV2EnabledImBool)) {
+                        if (UiWidgets.checkbox("Health v2 (Pink/Glow)", healthV2EnabledImBool)) {
                             EspSettings.healthV2Enabled = healthV2EnabledImBool.get();
                         }
 
@@ -530,35 +541,35 @@ advancedNametagsEnabledImBool.set(EspSettings.advancedNametagsEnabled);
                             ImGui.sameLine();
                             ImGui.pushItemWidth(80f);
                             healthV2GlowStrengthArr[0] = EspSettings.healthV2GlowStrength;
-                            ImGui.sliderFloat("Glow Strength##health", healthV2GlowStrengthArr, 1f, 10f, "%.1f");
+                            UiWidgets.sliderFloat("Glow Strength##health", healthV2GlowStrengthArr, 1f, 10f, "%.1f");
                             EspSettings.healthV2GlowStrength = healthV2GlowStrengthArr[0];
                             ImGui.popItemWidth();
                         }
                     }
 
                     armorBarsEnabledImBool.set(EspSettings.armorBarsEnabled);
-                    if (ImGui.checkbox("Enable Armor Bars", armorBarsEnabledImBool)) {
+                    if (UiWidgets.checkbox("Enable Armor Bars", armorBarsEnabledImBool)) {
                         EspSettings.armorBarsEnabled = armorBarsEnabledImBool.get();
                     }
 
                     absorptionBarsEnabledImBool.set(EspSettings.absorptionBarsEnabled);
-                    if (ImGui.checkbox("Enable Golden Health (Absorption)", absorptionBarsEnabledImBool)) {
+                    if (UiWidgets.checkbox("Enable Golden Health (Absorption)", absorptionBarsEnabledImBool)) {
                         EspSettings.absorptionBarsEnabled = absorptionBarsEnabledImBool.get();
                     }
 
                     distanceEnabledImBool.set(EspSettings.distanceEnabled);
-                    if (ImGui.checkbox("Enable Distance", distanceEnabledImBool)) {
+                    if (UiWidgets.checkbox("Enable Distance", distanceEnabledImBool)) {
                         EspSettings.distanceEnabled = distanceEnabledImBool.get();
                     }
 
                     equipmentEspBool.set(EspSettings.equipmentEspEnabled);
-                    if (ImGui.checkbox("Enable Equipment ESP (Armor/Items)", equipmentEspBool)) {
+                    if (UiWidgets.checkbox("Enable Equipment ESP (Armor/Items)", equipmentEspBool)) {
                         EspSettings.equipmentEspEnabled = equipmentEspBool.get();
                     }
 
                     maxDistanceArr[0] = EspSettings.maxDistance;
                     ImGui.pushItemWidth(250f);
-                    ImGui.sliderFloat("ESP Max Distance##esp", maxDistanceArr, 10f, 1000f, "%.0f blocks");
+                    UiWidgets.sliderFloat("ESP Max Distance##esp", maxDistanceArr, 10f, 1000f, "%.0f blocks");
                     ImGui.popItemWidth();
                     EspSettings.maxDistance = maxDistanceArr[0];
 
@@ -567,12 +578,12 @@ advancedNametagsEnabledImBool.set(EspSettings.advancedNametagsEnabled);
                 ImGui.separator();
                 ImGui.endTabItem();
             }
-            if (ImGui.beginTabItem("Skeleton ESP")) {
+            if (beginTab("Skeleton ESP")) {
 ImGui.textDisabled("Skeleton ESP");
                 ImGui.spacing();
                 ImGui.spacing();
                     ImBoolean skeletonBool = new ImBoolean(EspSettings.skeletonEspEnabled);
-                    if (ImGui.checkbox("Enable Skeleton ESP", skeletonBool)) {
+                    if (UiWidgets.checkbox("Enable Skeleton ESP", skeletonBool)) {
                         EspSettings.skeletonEspEnabled = skeletonBool.get();
                     }
                     if (EspSettings.skeletonEspEnabled) {
@@ -584,7 +595,7 @@ ImGui.textDisabled("Skeleton ESP");
                         
                         float[] skelThick = { EspSettings.skeletonThickness };
                         ImGui.pushItemWidth(150f);
-                        if (ImGui.sliderFloat("Skeleton Thickness", skelThick, 0.5f, 5.0f, "%.1f px")) {
+                        if (UiWidgets.sliderFloat("Skeleton Thickness", skelThick, 0.5f, 5.0f, "%.1f px")) {
                             EspSettings.skeletonThickness = skelThick[0];
                         }
                         ImGui.popItemWidth();
@@ -598,7 +609,7 @@ ImGui.textDisabled("Skeleton ESP");
                     }
 
                     tracersEnabledImBool.set(EspSettings.tracersEnabled);
-                    if (ImGui.checkbox("Enable Tracers", tracersEnabledImBool)) {
+                    if (UiWidgets.checkbox("Enable Tracers", tracersEnabledImBool)) {
                         EspSettings.tracersEnabled = tracersEnabledImBool.get();
                     }
                     if (EspSettings.tracersEnabled) {
@@ -612,7 +623,7 @@ ImGui.textDisabled("Skeleton ESP");
                     ImGui.spacing();
 
                     eyeTraceEnabledImBool.set(EspSettings.eyeTraceEnabled);
-                    if (ImGui.checkbox("Enable Eye Tracers", eyeTraceEnabledImBool)) {
+                    if (UiWidgets.checkbox("Enable Eye Tracers", eyeTraceEnabledImBool)) {
                         EspSettings.eyeTraceEnabled = eyeTraceEnabledImBool.get();
                     }
                     if (EspSettings.eyeTraceEnabled) {
@@ -624,7 +635,7 @@ ImGui.textDisabled("Skeleton ESP");
                         
                         eyeTraceLengthArr[0] = EspSettings.eyeTraceLength;
                         ImGui.pushItemWidth(150f);
-                        if (ImGui.sliderFloat("Eye Trace Length", eyeTraceLengthArr, 0.5f, 10.0f, "%.1f blocks")) {
+                        if (UiWidgets.sliderFloat("Eye Trace Length", eyeTraceLengthArr, 0.5f, 10.0f, "%.1f blocks")) {
                             EspSettings.eyeTraceLength = eyeTraceLengthArr[0];
                         }
                         ImGui.popItemWidth();
@@ -632,13 +643,13 @@ ImGui.textDisabled("Skeleton ESP");
                 ImGui.separator();
                 ImGui.endTabItem();
             }
-            if (ImGui.beginTabItem("Utilities")) {
+            if (beginTab("Utilities")) {
 ImGui.textDisabled("Utility");
                 ImGui.spacing();
                 ImGui.spacing();
 
                 hoverRefillBool.set(UtilitySettings.hoverRefillEnabled);
-                if (ImGui.checkbox("Hover Refill##util", hoverRefillBool)) {
+                if (UiWidgets.checkbox("Hover Refill##util", hoverRefillBool)) {
                     UtilitySettings.hoverRefillEnabled = hoverRefillBool.get();
                 }
                 if (ImGui.isItemHovered()) {
@@ -648,7 +659,7 @@ ImGui.textDisabled("Utility");
                 ImGui.spacing();
 
                 healKeybindBool.set(UtilitySettings.healKeybindEnabled);
-                if (ImGui.checkbox("Heal Keybind##util", healKeybindBool)) {
+                if (UiWidgets.checkbox("Heal Keybind##util", healKeybindBool)) {
                     UtilitySettings.healKeybindEnabled = healKeybindBool.get();
                 }
                 if (ImGui.isItemHovered()) {
@@ -681,13 +692,13 @@ ImGui.textDisabled("Utility");
                     healSwitchMinArr[0] = UtilitySettings.healSwitchMinTicks;
                     healSwitchMaxArr[0] = UtilitySettings.healSwitchMaxTicks;
                     ImGui.pushItemWidth(120f);
-                    if (ImGui.sliderInt("Switch Min##heal", healSwitchMinArr, 1, 10)) {
+                    if (UiWidgets.sliderInt("Switch Min##heal", healSwitchMinArr, 1, 10)) {
                         UtilitySettings.healSwitchMinTicks = Math.max(1, healSwitchMinArr[0]);
                         if (UtilitySettings.healSwitchMinTicks > UtilitySettings.healSwitchMaxTicks)
                             UtilitySettings.healSwitchMaxTicks = UtilitySettings.healSwitchMinTicks;
                     }
                     ImGui.sameLine();
-                    if (ImGui.sliderInt("Switch Max (Ticks)##heal", healSwitchMaxArr, 1, 10)) {
+                    if (UiWidgets.sliderInt("Switch Max (Ticks)##heal", healSwitchMaxArr, 1, 10)) {
                         UtilitySettings.healSwitchMaxTicks = Math.max(1, healSwitchMaxArr[0]);
                         if (UtilitySettings.healSwitchMaxTicks < UtilitySettings.healSwitchMinTicks)
                             UtilitySettings.healSwitchMinTicks = UtilitySettings.healSwitchMaxTicks;
@@ -698,13 +709,13 @@ ImGui.textDisabled("Utility");
                     healRestoreMinArr[0] = UtilitySettings.healRestoreMinTicks;
                     healRestoreMaxArr[0] = UtilitySettings.healRestoreMaxTicks;
                     ImGui.pushItemWidth(120f);
-                    if (ImGui.sliderInt("Restore Min##heal", healRestoreMinArr, 1, 10)) {
+                    if (UiWidgets.sliderInt("Restore Min##heal", healRestoreMinArr, 1, 10)) {
                         UtilitySettings.healRestoreMinTicks = Math.max(1, healRestoreMinArr[0]);
                         if (UtilitySettings.healRestoreMinTicks > UtilitySettings.healRestoreMaxTicks)
                             UtilitySettings.healRestoreMaxTicks = UtilitySettings.healRestoreMinTicks;
                     }
                     ImGui.sameLine();
-                    if (ImGui.sliderInt("Restore Max (Ticks)##heal", healRestoreMaxArr, 1, 10)) {
+                    if (UiWidgets.sliderInt("Restore Max (Ticks)##heal", healRestoreMaxArr, 1, 10)) {
                         UtilitySettings.healRestoreMaxTicks = Math.max(1, healRestoreMaxArr[0]);
                         if (UtilitySettings.healRestoreMaxTicks < UtilitySettings.healRestoreMinTicks)
                             UtilitySettings.healRestoreMinTicks = UtilitySettings.healRestoreMaxTicks;
@@ -725,13 +736,13 @@ ImGui.textDisabled("Utility");
                 ImGui.separator();
                 ImGui.endTabItem();
             }
-            if (ImGui.beginTabItem("Friends")) {
+            if (beginTab("Friends")) {
 ImGui.textDisabled("Friends");
                 ImGui.spacing();
                 ImGui.spacing();
 
                 friendsSystemEnabledBool.set(EspSettings.friendsSystemEnabled);
-                if (ImGui.checkbox("Enable Friends System", friendsSystemEnabledBool)) {
+                if (UiWidgets.checkbox("Enable Friends System", friendsSystemEnabledBool)) {
                     EspSettings.friendsSystemEnabled = friendsSystemEnabledBool.get();
                 }
 
@@ -739,12 +750,12 @@ ImGui.textDisabled("Friends");
                     ImGui.separator();
 
                     middleClickFriendBool.set(AimAssistSettings.middleClickFriendEnabled);
-                    if (ImGui.checkbox("Middle-Click Friend In-Game", middleClickFriendBool)) {
+                    if (UiWidgets.checkbox("Middle-Click Friend In-Game", middleClickFriendBool)) {
                         AimAssistSettings.middleClickFriendEnabled = middleClickFriendBool.get();
                     }
 
                     friendEspOverrideBool.set(EspSettings.friendEspOverride);
-                    if (ImGui.checkbox("Override ESP Color for Friends", friendEspOverrideBool)) {
+                    if (UiWidgets.checkbox("Override ESP Color for Friends", friendEspOverrideBool)) {
                         EspSettings.friendEspOverride = friendEspOverrideBool.get();
                     }
                     if (EspSettings.friendEspOverride) {
@@ -840,13 +851,13 @@ ImGui.textDisabled("Friends");
 
                 ImGui.endTabItem();
             }
-            if (ImGui.beginTabItem("Ore ESP")) {
+            if (beginTab("Ore ESP")) {
 ImGui.textDisabled("Ore ESP");
                 ImGui.spacing();
                 ImGui.spacing();
 
                 ImBoolean oreEspBool = new ImBoolean(OreEspSettings.enabled);
-                if (ImGui.checkbox("Enable Ore ESP", oreEspBool)) {
+                if (UiWidgets.checkbox("Enable Ore ESP", oreEspBool)) {
                     OreEspSettings.enabled = oreEspBool.get();
                     if (OreEspSettings.enabled) OreEsp.invalidateCache();
                 }
@@ -870,7 +881,7 @@ ImGui.textDisabled("Ore ESP");
                     // Scan radius slider
                     int[] radiusArr = { OreEspSettings.scanRadius };
                     ImGui.pushItemWidth(250f);
-                    if (ImGui.sliderInt("Scan Radius (blocks)##ore", radiusArr, 8, 64)) {
+                    if (UiWidgets.sliderInt("Scan Radius (blocks)##ore", radiusArr, 8, 64)) {
                         OreEspSettings.scanRadius = radiusArr[0];
                         OreEsp.invalidateCache();
                     }
@@ -879,7 +890,7 @@ ImGui.textDisabled("Ore ESP");
                     // Rescan interval
                     int[] rescanArr = { OreEspSettings.rescanTicks };
                     ImGui.pushItemWidth(250f);
-                    if (ImGui.sliderInt("Rescan Interval (ticks)##ore", rescanArr, 1, 40)) {
+                    if (UiWidgets.sliderInt("Rescan Interval (ticks)##ore", rescanArr, 1, 40)) {
                         OreEspSettings.rescanTicks = rescanArr[0];
                     }
                     ImGui.popItemWidth();
@@ -891,7 +902,7 @@ ImGui.textDisabled("Ore ESP");
 
                     // Row 1: Diamond, Emerald, Lapis
                     ImBoolean diaBool = new ImBoolean(OreEspSettings.diamond);
-                    if (ImGui.checkbox("Diamond##ore", diaBool)) {
+                    if (UiWidgets.checkbox("Diamond##ore", diaBool)) {
                         OreEspSettings.diamond = diaBool.get();
                         OreEsp.invalidateCache();
                     }
@@ -900,7 +911,7 @@ ImGui.textDisabled("Ore ESP");
                     ImGui.sameLine();
 
                     ImBoolean emBool = new ImBoolean(OreEspSettings.emerald);
-                    if (ImGui.checkbox("Emerald##ore", emBool)) {
+                    if (UiWidgets.checkbox("Emerald##ore", emBool)) {
                         OreEspSettings.emerald = emBool.get();
                         OreEsp.invalidateCache();
                     }
@@ -909,7 +920,7 @@ ImGui.textDisabled("Ore ESP");
                     ImGui.sameLine();
 
                     ImBoolean lapBool = new ImBoolean(OreEspSettings.lapis);
-                    if (ImGui.checkbox("Lapis##ore", lapBool)) {
+                    if (UiWidgets.checkbox("Lapis##ore", lapBool)) {
                         OreEspSettings.lapis = lapBool.get();
                         OreEsp.invalidateCache();
                     }
@@ -918,7 +929,7 @@ ImGui.textDisabled("Ore ESP");
 
                     // Row 2: Redstone, Gold, Iron
                     ImBoolean rsBool = new ImBoolean(OreEspSettings.redstone);
-                    if (ImGui.checkbox("Redstone##ore", rsBool)) {
+                    if (UiWidgets.checkbox("Redstone##ore", rsBool)) {
                         OreEspSettings.redstone = rsBool.get();
                         OreEsp.invalidateCache();
                     }
@@ -927,7 +938,7 @@ ImGui.textDisabled("Ore ESP");
                     ImGui.sameLine();
 
                     ImBoolean goldBool = new ImBoolean(OreEspSettings.gold);
-                    if (ImGui.checkbox("Gold##ore", goldBool)) {
+                    if (UiWidgets.checkbox("Gold##ore", goldBool)) {
                         OreEspSettings.gold = goldBool.get();
                         OreEsp.invalidateCache();
                     }
@@ -936,7 +947,7 @@ ImGui.textDisabled("Ore ESP");
                     ImGui.sameLine();
 
                     ImBoolean ironBool = new ImBoolean(OreEspSettings.iron);
-                    if (ImGui.checkbox("Iron##ore", ironBool)) {
+                    if (UiWidgets.checkbox("Iron##ore", ironBool)) {
                         OreEspSettings.iron = ironBool.get();
                         OreEsp.invalidateCache();
                     }
@@ -945,7 +956,7 @@ ImGui.textDisabled("Ore ESP");
 
                     // Row 3: Coal, Copper
                     ImBoolean coalBool = new ImBoolean(OreEspSettings.coal);
-                    if (ImGui.checkbox("Coal##ore", coalBool)) {
+                    if (UiWidgets.checkbox("Coal##ore", coalBool)) {
                         OreEspSettings.coal = coalBool.get();
                         OreEsp.invalidateCache();
                     }
@@ -954,7 +965,7 @@ ImGui.textDisabled("Ore ESP");
                     ImGui.sameLine();
 
                     ImBoolean copBool = new ImBoolean(OreEspSettings.copper);
-                    if (ImGui.checkbox("Copper##ore", copBool)) {
+                    if (UiWidgets.checkbox("Copper##ore", copBool)) {
                         OreEspSettings.copper = copBool.get();
                         OreEsp.invalidateCache();
                     }
@@ -963,7 +974,7 @@ ImGui.textDisabled("Ore ESP");
 
                     // Row 4: Ancient Debris, Quartz
                     ImBoolean debBool = new ImBoolean(OreEspSettings.ancientDebris);
-                    if (ImGui.checkbox("Ancient Debris##ore", debBool)) {
+                    if (UiWidgets.checkbox("Ancient Debris##ore", debBool)) {
                         OreEspSettings.ancientDebris = debBool.get();
                         OreEsp.invalidateCache();
                     }
@@ -972,7 +983,7 @@ ImGui.textDisabled("Ore ESP");
                     ImGui.sameLine();
 
                     ImBoolean qtzBool = new ImBoolean(OreEspSettings.quartz);
-                    if (ImGui.checkbox("Quartz##ore", qtzBool)) {
+                    if (UiWidgets.checkbox("Quartz##ore", qtzBool)) {
                         OreEspSettings.quartz = qtzBool.get();
                         OreEsp.invalidateCache();
                     }
@@ -982,13 +993,13 @@ ImGui.textDisabled("Ore ESP");
                 ImGui.separator();
                 ImGui.endTabItem();
             }
-            if (ImGui.beginTabItem("Radar")) {
+            if (beginTab("Radar")) {
 ImGui.textDisabled("Overlays & Radars");
                 ImGui.spacing();
                 ImGui.spacing();
 
                 adminOverlayEnabledBool.set(EspSettings.adminOverlayEnabled);
-                if (ImGui.checkbox("Enable Admin Radar Overlay", adminOverlayEnabledBool)) {
+                if (UiWidgets.checkbox("Enable Admin Radar Overlay", adminOverlayEnabledBool)) {
                     EspSettings.adminOverlayEnabled = adminOverlayEnabledBool.get();
                 }
                 if (ImGui.isItemHovered()) {
@@ -998,7 +1009,7 @@ ImGui.textDisabled("Overlays & Radars");
                 ImGui.spacing();
                 
                 playerRadarEnabledBool.set(EspSettings.playerRadarEnabled);
-                if (ImGui.checkbox("Enable Player Radar Overlay", playerRadarEnabledBool)) {
+                if (UiWidgets.checkbox("Enable Player Radar Overlay", playerRadarEnabledBool)) {
                     EspSettings.playerRadarEnabled = playerRadarEnabledBool.get();
                 }
                 if (ImGui.isItemHovered()) {
@@ -1009,13 +1020,13 @@ ImGui.textDisabled("Overlays & Radars");
 
                 ImGui.endTabItem();
             }
-            if (ImGui.beginTabItem("Light ESP")) {
+            if (beginTab("Light ESP")) {
 ImGui.textDisabled("Light ESP");
                 ImGui.spacing();
                 ImGui.spacing();
 
                 ImBoolean lightEspBool = new ImBoolean(LightSourceEspSettings.enabled);
-                if (ImGui.checkbox("Enable Light Source ESP", lightEspBool)) {
+                if (UiWidgets.checkbox("Enable Light Source ESP", lightEspBool)) {
                     LightSourceEspSettings.enabled = lightEspBool.get();
                     if (LightSourceEspSettings.enabled) LightSourceEsp.invalidateCache();
                 }
@@ -1028,7 +1039,7 @@ ImGui.textDisabled("Light ESP");
 
                     int[] lRadiusArr = { LightSourceEspSettings.scanRadius };
                     ImGui.pushItemWidth(250f);
-                    if (ImGui.sliderInt("Scan Radius##light", lRadiusArr, 8, 64)) {
+                    if (UiWidgets.sliderInt("Scan Radius##light", lRadiusArr, 8, 64)) {
                         LightSourceEspSettings.scanRadius = lRadiusArr[0];
                         LightSourceEsp.invalidateCache();
                     }
@@ -1036,14 +1047,14 @@ ImGui.textDisabled("Light ESP");
 
                     int[] lRescanArr = { LightSourceEspSettings.rescanTicks };
                     ImGui.pushItemWidth(250f);
-                    if (ImGui.sliderInt("Rescan Interval (ticks)##light", lRescanArr, 1, 40)) {
+                    if (UiWidgets.sliderInt("Rescan Interval (ticks)##light", lRescanArr, 1, 40)) {
                         LightSourceEspSettings.rescanTicks = lRescanArr[0];
                     }
                     ImGui.popItemWidth();
 
                     int[] lMinLumArr = { LightSourceEspSettings.minLuminance };
                     ImGui.pushItemWidth(250f);
-                    if (ImGui.sliderInt("Min Luminance##light", lMinLumArr, 1, 15)) {
+                    if (UiWidgets.sliderInt("Min Luminance##light", lMinLumArr, 1, 15)) {
                         LightSourceEspSettings.minLuminance = lMinLumArr[0];
                         LightSourceEsp.invalidateCache();
                     }
@@ -1056,16 +1067,32 @@ ImGui.textDisabled("Light ESP");
                 ImGui.separator();
                 ImGui.endTabItem();
             }
-            if (ImGui.beginTabItem("Settings")) {
-ImGui.textDisabled("Config/Debug");
+            if (beginTab("Settings")) {
+UiDraw.textSection("Appearance");
+                float[] accentEdit = { UiColors.accentR, UiColors.accentG, UiColors.accentB };
+                if (ImGui.colorEdit3("Accent Color", accentEdit)) {
+                    UiColors.accentR = accentEdit[0];
+                    UiColors.accentG = accentEdit[1];
+                    UiColors.accentB = accentEdit[2];
+                    UiColors.applyImGuiStyle();
+                }
+
+                int[] bgPct = { Math.round(UiSettings.menuBackgroundOpacity * 100f) };
+                if (UiWidgets.sliderInt("Menu Background Darkness", bgPct, 35, 100, "%d%%")) {
+                    UiSettings.menuBackgroundOpacity = bgPct[0] / 100f;
+                }
+                if (ImGui.isItemHovered()) {
+                    ImGui.setTooltip("How opaque the menu panel is. Lower = more see-through.");
+                }
+
                 ImGui.spacing();
-                ImGui.spacing();
+UiDraw.textSection("Config / Debug");
                 ImGui.text("Light Debug Renderers");
                 ImGui.separator();
                 ImGui.spacing();
 
                 ImBoolean skyLightBool = new ImBoolean(LightDebugManager.skyLightEnabled);
-                if (ImGui.checkbox("Sky Light Levels", skyLightBool)) {
+                if (UiWidgets.checkbox("Sky Light Levels", skyLightBool)) {
                     LightDebugManager.skyLightEnabled = skyLightBool.get();
                 }
                 if (ImGui.isItemHovered()) {
@@ -1073,7 +1100,7 @@ ImGui.textDisabled("Config/Debug");
                 }
 
                 ImBoolean blockLightBool = new ImBoolean(LightDebugManager.blockLightEnabled);
-                if (ImGui.checkbox("Block Light Levels", blockLightBool)) {
+                if (UiWidgets.checkbox("Block Light Levels", blockLightBool)) {
                     LightDebugManager.blockLightEnabled = blockLightBool.get();
                 }
                 if (ImGui.isItemHovered()) {
@@ -1081,7 +1108,7 @@ ImGui.textDisabled("Config/Debug");
                 }
 
                 ImBoolean skyLightSecBool = new ImBoolean(LightDebugManager.skyLightSectionsEnabled);
-                if (ImGui.checkbox("Sky Light Sections", skyLightSecBool)) {
+                if (UiWidgets.checkbox("Sky Light Sections", skyLightSecBool)) {
                     LightDebugManager.skyLightSectionsEnabled = skyLightSecBool.get();
                 }
                 if (ImGui.isItemHovered()) {
@@ -1094,7 +1121,7 @@ ImGui.textDisabled("Config/Debug");
                 ImGui.spacing();
 
                 ImBoolean structBool = new ImBoolean(com.velocity.core.StructureDebugManager.enabled);
-                if (ImGui.checkbox("Structure Bounding Boxes (Structure ESP)", structBool)) {
+                if (UiWidgets.checkbox("Structure Bounding Boxes (Structure ESP)", structBool)) {
                     com.velocity.core.StructureDebugManager.enabled = structBool.get();
                 }
                 if (ImGui.isItemHovered()) {
@@ -1105,7 +1132,7 @@ ImGui.textDisabled("Config/Debug");
 
                 ImGui.endTabItem();
             }
-            if (ImGui.beginTabItem("Logout Tracker")) {
+            if (beginTab("Logout Tracker")) {
                 ImGui.textDisabled("Player Logout Coordinate Tracker");
                 ImGui.spacing();
                 
@@ -1180,12 +1207,21 @@ ImGui.textDisabled("Config/Debug");
                 }
                 ImGui.endTabItem();
             }
+            MenuChrome.afterTabBar();
             ImGui.endTabBar();
         }
 
         ImGui.separator();
         ImGui.textDisabled("INSERT or ESC to close");
 
-        ImGui.end();
+        MenuChrome.endMenuWindow();
+    }
+
+    private static boolean beginTab(String label) {
+        boolean open = ImGui.beginTabItem(label);
+        if (open) {
+            MenuChrome.onTabSelected();
+        }
+        return open;
     }
 }

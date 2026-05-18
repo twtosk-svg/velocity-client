@@ -1,8 +1,8 @@
 package com.velocity.gui;
 
 import com.velocity.config.EspSettings;
-import com.velocity.core.EspRenderer;
 import com.velocity.core.Win32Setup;
+import com.velocity.gui.GlBackgroundBlur;
 
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.WinDef.HWND;
@@ -14,9 +14,11 @@ public class OverlayManager {
     public static long overlayWindow = 0;
     static HWND nativeHwnd; // package-private so EspRenderer can pass it to SetForegroundWindow
     private static boolean menuOpen = false;
+    private static boolean closePending = false;
 
     private static int framesSinceTopmost = 0;
     private static boolean lastStreamproof = true;
+    private static boolean overlayWasHidden = false;
 
     public static void init() {
         MinecraftClient client = MinecraftClient.getInstance();
@@ -64,32 +66,53 @@ public class OverlayManager {
     }
 
     public static void toggleMenu() {
-        menuOpen = !menuOpen;
+        if (menuOpen) {
+            requestCloseMenu();
+        } else {
+            openMenu();
+        }
+    }
+
+    public static void openMenu() {
+        if (menuOpen) return;
+        menuOpen = true;
+        closePending = false;
+        MenuAnimator.syncOpenState(true);
+        applyMenuInputState(true);
+    }
+
+    public static void requestCloseMenu() {
+        if (!menuOpen) return;
+        closePending = true;
+    }
+
+    /** Called when fade-out completes. Returns true if close was finalized. */
+    public static boolean finishCloseIfPending() {
+        if (!closePending || !MenuAnimator.isFullyClosed()) return false;
+        menuOpen = false;
+        closePending = false;
+        applyMenuInputState(false);
+        return true;
+    }
+
+    private static void applyMenuInputState(boolean open) {
         MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null || client.getWindow() == null) return;
         long mcWindow = client.getWindow().getHandle();
 
-        // Update overlay transparency / passthrough
         GLFW.glfwSetWindowAttrib(overlayWindow, GLFW.GLFW_MOUSE_PASSTHROUGH,
-                menuOpen ? GLFW.GLFW_FALSE : GLFW.GLFW_TRUE);
+                open ? GLFW.GLFW_FALSE : GLFW.GLFW_TRUE);
         updateWindowStyle();
 
-        if (menuOpen) {
+        if (open) {
             GLFW.glfwSetInputMode(mcWindow, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
-
-            // Give the overlay Win32 focus so it can receive mouse events.
-            // Without this Windows routes clicks to MC even though the overlay
-            // is on top and WS_EX_NOACTIVATE has been removed.
             Win32Setup.INSTANCE.SetForegroundWindow(nativeHwnd);
-
         } else {
-            // Restore Minecraft cursor dynamically based on whether a UI menu is open
             if (client.currentScreen == null) {
                 GLFW.glfwSetInputMode(mcWindow, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
             } else {
                 GLFW.glfwSetInputMode(mcWindow, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
             }
-
-            // Give focus back to Minecraft
             long mcHwndLong = GLFWNativeWin32.glfwGetWin32Window(mcWindow);
             HWND mcHwnd = new HWND(new Pointer(mcHwndLong));
             Win32Setup.INSTANCE.SetForegroundWindow(mcHwnd);
@@ -129,9 +152,32 @@ public class OverlayManager {
         boolean ovFocused = GLFW.glfwGetWindowAttrib(overlayWindow, GLFW.GLFW_FOCUSED) == GLFW.GLFW_TRUE;
         boolean mcIconified = GLFW.glfwGetWindowAttrib(mcWindow, GLFW.GLFW_ICONIFIED) == GLFW.GLFW_TRUE;
 
-        if (mcIconified || (!mcFocused && !ovFocused)) {
-            GLFW.glfwHideWindow(overlayWindow);
+        boolean menuVisible = isMenuOpen();
+        if (mcIconified) {
+            if (!overlayWasHidden) {
+                GLFW.glfwHideWindow(overlayWindow);
+                overlayWasHidden = true;
+            }
             return;
+        }
+
+        // Keep overlay alive while the menu is open (alt-tab / Win+D return)
+        if (!mcFocused && !ovFocused && !menuVisible) {
+            if (!overlayWasHidden) {
+                GLFW.glfwHideWindow(overlayWindow);
+                overlayWasHidden = true;
+            }
+            return;
+        }
+
+        if (overlayWasHidden) {
+            overlayWasHidden = false;
+            GLFW.glfwShowWindow(overlayWindow);
+            syncOverlayToMinecraft(mcWindow);
+            assertTopmost();
+            if (menuVisible && nativeHwnd != null) {
+                Win32Setup.INSTANCE.SetForegroundWindow(nativeHwnd);
+            }
         } else {
             GLFW.glfwShowWindow(overlayWindow);
         }
@@ -156,8 +202,29 @@ public class OverlayManager {
         int[] ovW = new int[1], ovH = new int[1];
         GLFW.glfwGetWindowSize(overlayWindow, ovW, ovH);
 
+        syncOverlayToMinecraft(mcWindow);
+
+        framesSinceTopmost++;
+        if (framesSinceTopmost >= 60) {
+            assertTopmost();
+            framesSinceTopmost = 0;
+        }
+    }
+
+    private static void syncOverlayToMinecraft(long mcWindow) {
+        int[] mcW = new int[1], mcH = new int[1];
+        GLFW.glfwGetWindowSize(mcWindow, mcW, mcH);
+
+        int[] ovW = new int[1], ovH = new int[1];
+        GLFW.glfwGetWindowSize(overlayWindow, ovW, ovH);
+
         if (mcW[0] != ovW[0] || mcH[0] != ovH[0]) {
             GLFW.glfwSetWindowSize(overlayWindow, mcW[0], mcH[0]);
+            if (GlBackgroundBlur.ENABLED) {
+                int[] fbW = new int[1], fbH = new int[1];
+                GLFW.glfwGetFramebufferSize(overlayWindow, fbW, fbH);
+                GlBackgroundBlur.resize(fbW[0], fbH[0]);
+            }
         }
 
         int[] mcX = new int[1], mcY = new int[1];
@@ -168,12 +235,6 @@ public class OverlayManager {
 
         if (mcX[0] != ovX[0] || mcY[0] != ovY[0]) {
             GLFW.glfwSetWindowPos(overlayWindow, mcX[0], mcY[0]);
-        }
-
-        framesSinceTopmost++;
-        if (framesSinceTopmost >= 60) {
-            assertTopmost();
-            framesSinceTopmost = 0;
         }
     }
 
@@ -192,6 +253,6 @@ public class OverlayManager {
     }
 
     public static boolean isMenuOpen() {
-        return menuOpen;
+        return menuOpen || closePending;
     }
 }
