@@ -72,7 +72,6 @@ public class MenuUI {
     private static final ImBoolean aimEnabledBool = new ImBoolean(false);
     private static final ImBoolean aimVisCheckBool = new ImBoolean(true);
     private static final ImBoolean aimFovCircleBool = new ImBoolean(true);
-    private static final ImBoolean aimGlowBool = new ImBoolean(true);
     private static final ImBoolean aimZombiesBool = new ImBoolean(true);
     private static final ImBoolean aimVillagersBool = new ImBoolean(true);
     private static final ImBoolean aimPlayersBool = new ImBoolean(true);
@@ -82,6 +81,7 @@ public class MenuUI {
     private static final ImBoolean aimFreeMoveBool = new ImBoolean(true);
     private static final ImBoolean aimDeadzoneDirBool = new ImBoolean(true);
     private static final ImBoolean mouse4AimBool = new ImBoolean(false);
+    private static final ImBoolean aimIgnoreBowsBool = new ImBoolean(false);
     private static float[] aimMaxDistArr = { 6.0f };
 
 
@@ -287,6 +287,14 @@ ImGui.textDisabled("Aim Assist");
                         ImGui.setTooltip("Aim Assist only activates while Mouse4 is held down.");
                     }
 
+                    aimIgnoreBowsBool.set(AimAssistSettings.ignoreBows);
+                    if (ImGui.checkbox("Ignore Bows/Crossbows##aim", aimIgnoreBowsBool)) {
+                        AimAssistSettings.ignoreBows = aimIgnoreBowsBool.get();
+                    }
+                    if (ImGui.isItemHovered()) {
+                        ImGui.setTooltip("Bypasses aim assist completely when holding a Bow or Crossbow.");
+                    }
+
 
 
                     ImGui.spacing();
@@ -318,16 +326,6 @@ ImGui.textDisabled("Aim Assist");
                         ImGui.popItemWidth();
                     }
 
-                    aimGlowBool.set(AimAssistSettings.nametagGlowEnabled);
-                    if (ImGui.checkbox("Target Nametag Glow##aim", aimGlowBool)) {
-                        AimAssistSettings.nametagGlowEnabled = aimGlowBool.get();
-                    }
-                    if (AimAssistSettings.nametagGlowEnabled) {
-                        ImGui.sameLine();
-                        ImGui.pushItemWidth(200f);
-                        ImGui.colorEdit4("##glowColor", AimAssistSettings.nametagGlowColor);
-                        ImGui.popItemWidth();
-                    }
                 }
                 ImGui.separator();
                 ImGui.endTabItem();
@@ -670,6 +668,12 @@ ImGui.textDisabled("Utility");
                     if (ImGui.isItemHovered()) {
                         ImGui.setTooltip("Click to bind a key.");
                     }
+
+                    ImGui.sameLine();
+                    ImGui.textColored(1.0f, 0.2f, 0.2f, 1.0f, "[! CAUTION]");
+                    if (ImGui.isItemHovered()) {
+                        ImGui.setTooltip("WARNING: Auto-potting generates rapid inventory action packets\nwhich are highly flaggable/detected by modern server anti-cheats!");
+                    }
                     
                     ImGui.spacing();
 
@@ -706,6 +710,12 @@ ImGui.textDisabled("Utility");
                             UtilitySettings.healRestoreMinTicks = UtilitySettings.healRestoreMaxTicks;
                     }
                     ImGui.popItemWidth();
+                } else {
+                    ImGui.sameLine();
+                    ImGui.textColored(1.0f, 0.2f, 0.2f, 1.0f, "[! CAUTION]");
+                    if (ImGui.isItemHovered()) {
+                        ImGui.setTooltip("WARNING: Auto-potting generates rapid inventory action packets\nwhich are highly flaggable/detected by modern server anti-cheats!");
+                    }
                 }
 
                 ImGui.spacing();
@@ -1078,8 +1088,96 @@ ImGui.textDisabled("Config/Debug");
                     ImGui.setTooltip("Visualizes sky light section boundaries and their readiness state.");
                 }
 
+                ImGui.spacing();
+                ImGui.text("World Debug Renderers");
+                ImGui.separator();
+                ImGui.spacing();
+
+                ImBoolean structBool = new ImBoolean(com.velocity.core.StructureDebugManager.enabled);
+                if (ImGui.checkbox("Structure Bounding Boxes (Structure ESP)", structBool)) {
+                    com.velocity.core.StructureDebugManager.enabled = structBool.get();
+                }
+                if (ImGui.isItemHovered()) {
+                    ImGui.setTooltip("Shows detailed 3D structure wireframes (Strongholds, Fortresses, Ocean Monuments, Outposts).");
+                }
+
                 ImGui.separator();
 
+                ImGui.endTabItem();
+            }
+            if (ImGui.beginTabItem("Logout Tracker")) {
+                ImGui.textDisabled("Player Logout Coordinate Tracker");
+                ImGui.spacing();
+                
+                if (ImGui.button("Clear Logouts")) {
+                    com.velocity.core.LogoutTracker.clear();
+                }
+                
+                ImGui.spacing();
+                ImGui.separator();
+                ImGui.spacing();
+
+                java.util.List<com.velocity.core.LogoutTracker.LoggedPlayer> logouts = com.velocity.core.LogoutTracker.getLoggedOutPlayers();
+                if (logouts.isEmpty()) {
+                    ImGui.textColored(0.5f, 0.5f, 0.5f, 1.0f, "No players have logged out yet.");
+                } else {
+                    int tableFlags = imgui.flag.ImGuiTableFlags.BordersInner | imgui.flag.ImGuiTableFlags.RowBg;
+                    if (ImGui.beginTable("logout_table", 4, tableFlags)) {
+                        ImGui.tableSetupColumn("Name");
+                        ImGui.tableSetupColumn("Coordinates");
+                        ImGui.tableSetupColumn("Health");
+                        ImGui.tableSetupColumn("Time");
+                        ImGui.tableHeadersRow();
+
+                        for (com.velocity.core.LogoutTracker.LoggedPlayer p : logouts) {
+                            ImGui.tableNextRow();
+
+                            ImGui.tableSetColumnIndex(0);
+                            ImGui.text(p.name);
+                            if (ImGui.isItemHovered()) {
+                                ImGui.beginTooltip();
+                                ImGui.textColored(0.2f, 0.8f, 1.0f, 1.0f, "--- Player Details for " + p.name + " ---");
+                                ImGui.text("UUID: " + p.uuid.toString());
+                                ImGui.text(String.format("Dimension: %s", p.dimension.replace("minecraft:", "")));
+                                ImGui.spacing();
+                                
+                                ImGui.textColored(1.0f, 0.8f, 0.2f, 1.0f, "Held Items:");
+                                ImGui.text("  Main Hand: " + (p.mainHand.isEmpty() ? "None" : p.mainHand.getName().getString() + " x" + p.mainHand.getCount()));
+                                ImGui.text("  Off Hand:  " + (p.offHand.isEmpty() ? "None" : p.offHand.getName().getString() + " x" + p.offHand.getCount()));
+                                ImGui.spacing();
+                                
+                                ImGui.textColored(1.0f, 0.8f, 0.2f, 1.0f, "Armor:");
+                                ImGui.text("  Helmet:     " + (p.helmet.isEmpty() ? "None" : p.helmet.getName().getString()));
+                                ImGui.text("  Chestplate: " + (p.chestplate.isEmpty() ? "None" : p.chestplate.getName().getString()));
+                                ImGui.text("  Leggings:   " + (p.leggings.isEmpty() ? "None" : p.leggings.getName().getString()));
+                                ImGui.text("  Boots:      " + (p.boots.isEmpty() ? "None" : p.boots.getName().getString()));
+                                
+                                ImGui.spacing();
+                                ImGui.textDisabled("(Minecraft network protocols only send equipped items of other players)");
+                                ImGui.endTooltip();
+                            }
+
+                            ImGui.tableSetColumnIndex(1);
+                            ImGui.text(String.format(java.util.Locale.US, "%.1f, %.1f, %.1f", p.pos.x, p.pos.y, p.pos.z));
+
+                            ImGui.tableSetColumnIndex(2);
+                            ImGui.text(String.format(java.util.Locale.US, "%.1f/%.1f", p.health, p.maxHealth));
+
+                            ImGui.tableSetColumnIndex(3);
+                            long elapsedSec = (System.currentTimeMillis() - p.timestamp) / 1000;
+                            String timeStr;
+                            if (elapsedSec < 60) {
+                                timeStr = elapsedSec + "s ago";
+                            } else if (elapsedSec < 3600) {
+                                timeStr = (elapsedSec / 60) + "m ago";
+                            } else {
+                                timeStr = (elapsedSec / 3600) + "h ago";
+                            }
+                            ImGui.text(timeStr);
+                        }
+                        ImGui.endTable();
+                    }
+                }
                 ImGui.endTabItem();
             }
             ImGui.endTabBar();

@@ -17,10 +17,20 @@ public class AdminRadar {
         if (!EspSettings.adminOverlayEnabled) return;
         if (client.getNetworkHandler() == null) return;
 
+        List<String> invisiblePlayers = new ArrayList<>();
+        if (client.world != null) {
+            for (net.minecraft.entity.player.PlayerEntity player : client.world.getPlayers()) {
+                if (player != client.player && player.isInvisible()) {
+                    invisiblePlayers.add(player.getName().getString());
+                }
+            }
+        }
+
         List<PlayerListEntry> admins = new ArrayList<>();
         for (PlayerListEntry entry : client.getNetworkHandler().getPlayerList()) {
             GameMode mode = entry.getGameMode();
-            if (mode == GameMode.CREATIVE || mode == GameMode.SPECTATOR) {
+            String name = entry.getProfile().name();
+            if (mode == GameMode.CREATIVE || mode == GameMode.SPECTATOR || invisiblePlayers.contains(name)) {
                 admins.add(entry);
             }
         }
@@ -57,12 +67,27 @@ public class AdminRadar {
                         ImGui.tableNextRow();
                         
                         String name = admin.getProfile().name();
-                        String modeStr = admin.getGameMode() == GameMode.CREATIVE ? "Creative" : "Spectator";
+                        String modeStr;
+                        float r, g, b;
+
+                        if (invisiblePlayers.contains(name)) {
+                            modeStr = "Invisible";
+                            r = 0.7f;
+                            g = 0.4f;
+                            b = 1.0f; // Purple
+                        } else if (admin.getGameMode() == GameMode.CREATIVE) {
+                            modeStr = "Creative";
+                            r = 1.0f;
+                            g = 0.6f;
+                            b = 0.0f; // Orange
+                        } else {
+                            modeStr = "Spectator";
+                            r = 1.0f;
+                            g = 0.3f;
+                            b = 0.3f; // Red/Spectator
+                        }
+
                         int ping = admin.getLatency();
-                        
-                        float r = admin.getGameMode() == GameMode.CREATIVE ? 1.0f : 1.0f;
-                        float g = admin.getGameMode() == GameMode.CREATIVE ? 0.6f : 0.3f;
-                        float b = admin.getGameMode() == GameMode.CREATIVE ? 0.0f : 0.3f;
 
                         ImGui.tableSetColumnIndex(0);
                         ImGui.textColored(r, g, b, 1.0f, name);

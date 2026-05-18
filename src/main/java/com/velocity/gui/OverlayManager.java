@@ -16,6 +16,7 @@ public class OverlayManager {
     private static boolean menuOpen = false;
 
     private static int framesSinceTopmost = 0;
+    private static boolean lastStreamproof = true;
 
     public static void init() {
         MinecraftClient client = MinecraftClient.getInstance();
@@ -43,7 +44,13 @@ public class OverlayManager {
         nativeHwnd = new HWND(new Pointer(hwndLong));
 
         // Make streamproof!
-        Win32Setup.INSTANCE.SetWindowDisplayAffinity(nativeHwnd, Win32Setup.WDA_EXCLUDEFROMCAPTURE);
+        if (EspSettings.streamproofEnabled) {
+            Win32Setup.INSTANCE.SetWindowDisplayAffinity(nativeHwnd, Win32Setup.WDA_EXCLUDEFROMCAPTURE);
+            lastStreamproof = true;
+        } else {
+            Win32Setup.INSTANCE.SetWindowDisplayAffinity(nativeHwnd, Win32Setup.WDA_NONE);
+            lastStreamproof = false;
+        }
 
         // Make clickthrough initially
         updateWindowStyle();
@@ -129,11 +136,18 @@ public class OverlayManager {
             GLFW.glfwShowWindow(overlayWindow);
         }
 
-        // Apply dynamically streamproof toggle
-        if (EspSettings.streamproofEnabled) {
-            Win32Setup.INSTANCE.SetWindowDisplayAffinity(nativeHwnd, Win32Setup.WDA_EXCLUDEFROMCAPTURE);
-        } else {
-            Win32Setup.INSTANCE.SetWindowDisplayAffinity(nativeHwnd, Win32Setup.WDA_NONE);
+        // Apply dynamically streamproof toggle only when it changes
+        if (EspSettings.streamproofEnabled != lastStreamproof) {
+            if (EspSettings.streamproofEnabled) {
+                Win32Setup.INSTANCE.SetWindowDisplayAffinity(nativeHwnd, Win32Setup.WDA_EXCLUDEFROMCAPTURE);
+            } else {
+                Win32Setup.INSTANCE.SetWindowDisplayAffinity(nativeHwnd, Win32Setup.WDA_NONE);
+            }
+            // Force DWM redirection surface update immediately!
+            Win32Setup.INSTANCE.SetWindowPos(nativeHwnd, null, 0, 0, 0, 0,
+                    Win32Setup.SWP_NOMOVE | Win32Setup.SWP_NOSIZE | Win32Setup.SWP_NOACTIVATE | Win32Setup.SWP_FRAMECHANGED);
+            
+            lastStreamproof = EspSettings.streamproofEnabled;
         }
 
         int[] mcW = new int[1], mcH = new int[1];

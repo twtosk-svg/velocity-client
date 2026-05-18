@@ -66,7 +66,6 @@ public class AimAssist {
 
     // ── Pre-allocated buffers (zero GC in hot path) ──────────────────────────
     private static final double[] ANGLE_BUF = new double[2]; // reused by angleDelta()
-    private static final Vec3d[] BODY_PTS = new Vec3d[3];    // reused by getBodyPoints()
 
     // ─────────────────────────────────────────────────────────────────────────
     // Called by MouseInputMixin whenever the user physically moves the mouse.
@@ -142,6 +141,17 @@ public class AimAssist {
             return;
         }
 
+        // Ignore aim assist when holding a bow/crossbow
+        if (AimAssistSettings.ignoreBows) {
+            net.minecraft.item.Item mainItem = client.player.getMainHandStack().getItem();
+            net.minecraft.item.Item offItem = client.player.getOffHandStack().getItem();
+            if (mainItem instanceof net.minecraft.item.BowItem || mainItem instanceof net.minecraft.item.CrossbowItem ||
+                offItem instanceof net.minecraft.item.BowItem || offItem instanceof net.minecraft.item.CrossbowItem) {
+                targetCandidate = null;
+                return;
+            }
+        }
+
         // Focus mode toggle logic
         if (AimAssistSettings.focusKeybindKey >= 0) {
             boolean focusKeyDown = (Win32Setup.INSTANCE.GetAsyncKeyState(AimAssistSettings.focusKeybindKey) & 0x8000) != 0;
@@ -197,13 +207,7 @@ public class AimAssist {
                     Vec3d eyePos = client.player.getEyePos();
                     float playerYaw = client.player.getYaw();
                     float playerPitch = client.player.getPitch();
-                    Vec3d[] checkPoints = getBodyPoints(targetCandidate);
-                    double smallestAngle = Double.MAX_VALUE;
-                    for (Vec3d point : checkPoints) {
-                        double[] delta = angleDelta(eyePos, point, playerYaw, playerPitch);
-                        double totalAngle = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1]);
-                        if (totalAngle < smallestAngle) smallestAngle = totalAngle;
-                    }
+                    double smallestAngle = getSegmentAngleDelta(eyePos, targetCandidate, playerYaw, playerPitch);
                     if (smallestAngle > AimAssistSettings.fovDegrees) apply = false;
                     if (AimAssistSettings.visibilityCheck && !isVisible(client, eyePos, targetCandidate)) apply = false;
                 }
@@ -260,26 +264,12 @@ public class AimAssist {
             if (!isValidTarget(entity))
                 continue;
 
-            Vec3d[] checkPoints = getBodyPoints(entity);
-            double smallestAngle = Double.MAX_VALUE;
-            boolean withinFov = false;
-
-            for (Vec3d point : checkPoints) {
-                double[] delta = angleDelta(eyePos, point, playerYaw, playerPitch);
-                double totalAngleSq = delta[0] * delta[0] + delta[1] * delta[1];
-                
-                // Only sqrt if within the squared FOV bounds (optimization)
-                if (totalAngleSq <= fovDegreesSq) {
-                    withinFov = true;
-                    double totalAngle = Math.sqrt(totalAngleSq);
-                    if (totalAngle < smallestAngle) {
-                        smallestAngle = totalAngle;
-                    }
-                }
-            }
-
+            // ── Fusion Line Segment FOV Gating ─────────────────────────────────
+            // Calculates the minimum angular distance from the crosshair to the entire vertical segment.
+            double smallestAngle = getSegmentAngleDelta(eyePos, entity, playerYaw, playerPitch);
+            
             // FOV filter
-            if (!withinFov)
+            if (smallestAngle > AimAssistSettings.fovDegrees)
                 continue;
 
             // Lazy exit: Don't bother doing expensive raycasts if this entity 
@@ -346,16 +336,32 @@ public class AimAssist {
     }
 
     /**
-     * Returns three points on the entity's body: head (top), center, and feet.
-     * Used for FOV gating so any visible body part counts.
+     * Calculates the minimum angular distance (in degrees) from the player's crosshair
+     * to the vertical target line segment running from the entity's feet to its head.
+     * This provides perfect continuous segment-based FOV gating (the "Fusion line").
      */
-    private static Vec3d[] getBodyPoints(Entity entity) {
-        Vec3d feet = entity.getEntityPos();
-        double height = entity.getHeight();
-        BODY_PTS[0] = feet.add(0, height, 0);       // head
-        BODY_PTS[1] = feet.add(0, height * 0.5, 0); // center
-        BODY_PTS[2] = feet;                          // feet
-        return BODY_PTS;
+    private static double getSegmentAngleDelta(Vec3d eyePos, Entity entity, float playerYaw, float playerPitch) {
+        Vec3d feetPos = entity.getEntityPos();
+        double dx = feetPos.x - eyePos.x;
+        double dz = feetPos.z - eyePos.z;
+
+        float targetYaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+        double deltaYaw = MathHelper.wrapDegrees(targetYaw - playerYaw);
+
+        float headPitch = pitchToHead(eyePos, entity);
+        float feetPitch = pitchToFeet(eyePos, entity);
+
+        float minPitch = Math.min(headPitch, feetPitch);
+        float maxPitch = Math.max(headPitch, feetPitch);
+
+        double deltaPitch = 0;
+        if (playerPitch < minPitch) {
+            deltaPitch = minPitch - playerPitch;
+        } else if (playerPitch > maxPitch) {
+            deltaPitch = playerPitch - maxPitch;
+        }
+
+        return Math.sqrt(deltaYaw * deltaYaw + deltaPitch * deltaPitch);
     }
 
     /**

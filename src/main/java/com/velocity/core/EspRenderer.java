@@ -53,6 +53,18 @@ public class EspRenderer {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null || client.world == null || client.player == null) {
             BoneDataCache.clear();
+            LightDebugManager.reset();
+            StructureDebugManager.reset();
+            LogoutTracker.clear();
+            long overlayWindow = OverlayManager.overlayWindow;
+            if (overlayWindow != 0) {
+                long prev = GLFW.glfwGetCurrentContext();
+                GLFW.glfwMakeContextCurrent(overlayWindow);
+                GL11.glClearColor(0, 0, 0, 0);
+                GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+                GLFW.glfwSwapBuffers(overlayWindow);
+                GLFW.glfwMakeContextCurrent(prev);
+            }
             return;
         }
 
@@ -212,6 +224,21 @@ public class EspRenderer {
         // 1 ── ESP boxes ───────────────────────────────────────────────────────
         if (EspSettings.espEnabled) {
             drawEsp(client, tickDelta);
+        } else if (StructureDebugManager.enabled) {
+            Camera camera = client.gameRenderer.getCamera();
+            Vec3d cameraPos = camera.getCameraPos();
+            float pitch = camera.getPitch();
+            float yaw = camera.getYaw();
+            float fov = (float) ((GameRendererAccessor) (Object) client.gameRenderer)
+                    .invokeGetFov(camera, tickDelta, true);
+
+            GLFW.glfwGetWindowSize(OverlayManager.overlayWindow, GWIN_W, GWIN_H);
+            int width = GWIN_W[0];
+            int height = GWIN_H[0];
+
+            ProjectionMath.prepareFrame(pitch, yaw, fov, width, height,
+                    cameraPos.x, cameraPos.y, cameraPos.z);
+            StructureDebugManager.render(client, ImGui.getBackgroundDrawList(), tickDelta);
         }
 
         // 1b ── Ore ESP (with toggle keybind) ──────────────────────────────────
@@ -222,6 +249,8 @@ public class EspRenderer {
 
         // 1d ── Light Debug Renderers ──────────────────────────────────────────
         LightDebugManager.tick();
+        StructureDebugManager.tick();
+        LogoutTracker.tick(client);
 
         // 2 ── Menu ────────────────────────────────────────────────────────────
         if (OverlayManager.isMenuOpen()) {
@@ -305,7 +334,7 @@ public class EspRenderer {
                 cameraPos.x, cameraPos.y, cameraPos.z);
 
         // Cache the draw list reference (avoid repeated method calls)
-        imgui.ImDrawList drawList = ImGui.getForegroundDrawList();
+        imgui.ImDrawList drawList = ImGui.getBackgroundDrawList();
 
         // ── FOV circle ───────────────────────────────────────────────────────
         if (AimAssistSettings.enabled && AimAssistSettings.fovCircleEnabled) {
@@ -474,29 +503,9 @@ public class EspRenderer {
                     float nameX = minX + (maxX - minX) / 2f - textWidth / 2f;
                     float nameY = minY - 15f;
 
-                    boolean isAimTarget = AimAssistSettings.enabled
-                            && AimAssistSettings.nametagGlowEnabled
-                            && entity == aimTarget;
-
-                    if (isAimTarget) {
-                        float[] gc = AimAssistSettings.nametagGlowColor;
-                        int glowCol = ImGui.colorConvertFloat4ToU32(gc[0], gc[1], gc[2], gc[3] * 0.5f);
-                        int glowColInner = ImGui.colorConvertFloat4ToU32(gc[0], gc[1], gc[2], gc[3]);
-                        for (float ox = -2f; ox <= 2f; ox += 1f) {
-                            for (float oy = -2f; oy <= 2f; oy += 1f) {
-                                if (ox == 0 && oy == 0) continue;
-                                float dist = Math.abs(ox) + Math.abs(oy);
-                                int col = dist > 2 ? glowCol : glowColInner;
-                                drawList.addText(nameX + ox, nameY + oy, col, name);
-                            }
-                        }
-                        drawList.addText(nameX, nameY, cachedBlack, name);
-                        drawList.addText(nameX + 1f, nameY, cachedBlack, name);
-                    } else {
-                        drawList.addText(nameX + 1.5f, nameY + 1.5f, cachedBlack, name);
-                        drawList.addText(nameX, nameY, ImGui.colorConvertFloat4ToU32(1f, 1f, 1f, 1f), name);
-                        drawList.addText(nameX + 1f, nameY, ImGui.colorConvertFloat4ToU32(1f, 1f, 1f, 1f), name);
-                    }
+                    drawList.addText(nameX + 1.5f, nameY + 1.5f, cachedBlack, name);
+                    drawList.addText(nameX, nameY, ImGui.colorConvertFloat4ToU32(1f, 1f, 1f, 1f), name);
+                    drawList.addText(nameX + 1f, nameY, ImGui.colorConvertFloat4ToU32(1f, 1f, 1f, 1f), name);
                 }
 
                 // --- Distance (allocation-free formatting) ---
@@ -669,5 +678,8 @@ public class EspRenderer {
                 }
             }
         }
+        
+        // Draw custom Structure ESP
+        StructureDebugManager.render(client, drawList, tickDelta);
     }
 }

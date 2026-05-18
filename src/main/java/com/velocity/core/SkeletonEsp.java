@@ -25,7 +25,7 @@ public class SkeletonEsp {
         if (!EspSettings.skeletonEspEnabled) return;
         
         net.minecraft.client.MinecraftClient client = net.minecraft.client.MinecraftClient.getInstance();
-        if (client.player != null && entity.distanceTo(client.player) > 64.0f) {
+        if (client.player != null && entity.distanceTo(client.player) > EspSettings.maxDistance) {
             return;
         }
 

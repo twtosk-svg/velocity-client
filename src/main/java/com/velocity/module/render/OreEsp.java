@@ -142,7 +142,7 @@ public class OreEsp {
         float fwdY = (float) (-Math.sin(pitchRad));
         float fwdZ = (float) (Math.cos(yawRad) * cosP);
 
-        ImDrawList drawList = ImGui.getForegroundDrawList();
+        ImDrawList drawList = ImGui.getBackgroundDrawList();
         int rendered = 0;
 
         for (int i = 0; i < oreCount && rendered < MAX_RENDER_BLOCKS; i++) {

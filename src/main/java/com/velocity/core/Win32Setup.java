@@ -23,6 +23,7 @@ public interface Win32Setup extends StdCallLibrary {
     int SWP_NOMOVE = 0x0002;
     int SWP_NOSIZE = 0x0001;
     int SWP_NOACTIVATE = 0x0010;
+    int SWP_FRAMECHANGED = 0x0020;
 
     // Virtual-key codes
     int VK_INSERT = 0x2D;

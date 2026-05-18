@@ -56,6 +56,9 @@ public class PlayerRadar {
                         ImGui.tableNextRow();
                         
                         String name = player.getName().getString();
+                        boolean isInvisible = player.isInvisible();
+                        String displayName = isInvisible ? "[INV] " + name : name;
+                        
                         float health = player.getHealth() + player.getAbsorptionAmount();
                         float maxHealth = player.getMaxHealth();
                         int dist = (int) player.distanceTo(client.player);
@@ -65,14 +68,18 @@ public class PlayerRadar {
                                            FriendManager.isFriend(name);
                                            
                         float r = 1.0f, g = 1.0f, b = 1.0f;
-                        if (isFriend) {
+                        if (isInvisible) {
+                            r = 0.7f;
+                            g = 0.4f;
+                            b = 1.0f; // Purple for invisible
+                        } else if (isFriend) {
                             r = EspSettings.friendColor[0];
                             g = EspSettings.friendColor[1];
                             b = EspSettings.friendColor[2];
                         }
 
                         ImGui.tableSetColumnIndex(0);
-                        ImGui.textColored(r, g, b, 1.0f, name);
+                        ImGui.textColored(r, g, b, 1.0f, displayName);
                         
                         ImGui.tableSetColumnIndex(1);
                         float hpRatio = health / maxHealth;

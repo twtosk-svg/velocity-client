@@ -102,6 +102,9 @@ public class AimAssistSettings {
     // ── Visibility ────────────────────────────────────────────────────────────
     public static boolean visibilityCheck = true;
 
+    // ── Ignore Bows/Crossbows ─────────────────────────────────────────────────
+    public static boolean ignoreBows = false;
+
     // ── Mouse4 aim ────────────────────────────────────────────────────────────
     /**
      * When enabled, holding Mouse4 (XBUTTON1 / back button) activates aim assist.
@@ -112,9 +115,7 @@ public class AimAssistSettings {
     public static boolean fovCircleEnabled = true;
     public static float[] fovCircleColor = { 1f, 1f, 1f, 0.4f }; // white, 40% alpha
 
-    // ── Nametag glow for targeted entity ──────────────────────────────────────
-    public static boolean nametagGlowEnabled = true;
-    public static float[] nametagGlowColor = { 1f, 0.4f, 0.8f, 1f }; // pink
+
 
     // ── Global Combat ─────────────────────────────────────────────────────────
     /** Do not aim or swing at players on the same scoreboard team. */
